@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Computer Systems Revision Quiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column of question "cards" grouped by week, sticky progress bar with submit, results summary appears at top after grading */
+:root{
+  --bg:#F2F4F7; --surface:#FFFFFF; --ink:#152030; --muted:#5A6678; --line:#D9DEE6;
+  --accent:#2546C9; --accent-soft:#E6EBFB;
+  --ok:#1A7F4B; --ok-soft:#E3F4EA; --bad:#C23B2A; --bad-soft:#FBE7E4; --warn:#9A6A00; --warn-soft:#FFF4D6;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F151D; --surface:#17202B; --ink:#E6EBF2; --muted:#9AA6B6; --line:#2A3644;
+  --accent:#7D97FF; --accent-soft:#1E2A4D;
+  --ok:#4CC98A; --ok-soft:#14321F; --bad:#FF7F6E; --bad-soft:#3A1A16; --warn:#F2C14E; --warn-soft:#352A0E;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F151D; --surface:#17202B; --ink:#E6EBF2; --muted:#9AA6B6; --line:#2A3644;
+  --accent:#7D97FF; --accent-soft:#1E2A4D;
+  --ok:#4CC98A; --ok-soft:#14321F; --bad:#FF7F6E; --bad-soft:#3A1A16; --warn:#F2C14E; --warn-soft:#352A0E;
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.55;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top, 0px);z-index:10;background:var(--bg)}
+.wrap{max-width:760px;margin:0 auto;padding-block:32px 96px;display:flex;flex-direction:column;gap:28px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0}
+.mono{font-family:var(--f-mono)}
+
+header.intro{display:flex;flex-direction:column;gap:12px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.bits{color:var(--accent)}
+h1{font-size:clamp(30px,6vw,44px);font-weight:800;line-height:1.05;letter-spacing:-.01em}
+.batch{margin:0;font-family:var(--f-display);font-weight:800;font-size:clamp(18px,3.6vw,22px);color:var(--accent);letter-spacing:.01em}
+.lede{color:var(--muted);max-width:62ch;margin:0}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.tag{font-family:var(--f-mono);font-size:12px;padding:3px 8px;border:1px solid var(--line);border-radius:4px;color:var(--muted);background:var(--surface)}
+
+/* sticky bar */
+.bar{position:sticky;top:env(safe-area-inset-top, 0px);z-index:5;background:var(--bg);padding-block:10px;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.progress{flex:1;min-width:160px;display:flex;flex-direction:column;gap:6px}
+.progress-label{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.track{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.fill{height:100%;width:0;background:var(--accent);transition:width .25s}
+button{font-family:var(--f-body);font-size:15px;font-weight:700;cursor:pointer;border-radius:8px;padding:10px 18px;border:1px solid var(--accent);background:var(--accent);color:var(--surface)}
+button.ghost{background:transparent;color:var(--accent)}
+button:focus-visible,select:focus-visible,input:focus-visible,label.opt:focus-within{outline:3px solid var(--accent);outline-offset:2px}
+button:disabled{opacity:.5;cursor:default}
+
+/* confirm strip */
+.confirm{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--warn-soft);color:var(--ink);border:1px solid var(--warn);border-radius:8px;padding:12px 14px;width:100%}
+.confirm p{margin:0;flex:1;min-width:200px}
+
+/* results */
+.results{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:16px}
+.score{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.score .big{font-family:var(--f-display);font-weight:800;font-size:56px;line-height:1;font-variant-numeric:tabular-nums}
+.score .of{color:var(--muted);font-size:18px}
+.score .pct{font-family:var(--f-mono);font-size:15px;padding:4px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+.weeks{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.wk{border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.wk b{font-variant-numeric:tabular-nums;font-size:18px}
+.wk span{font-size:13px;color:var(--muted)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.toggle{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--muted);cursor:pointer}
+
+/* week sections */
+section.week{display:flex;flex-direction:column;gap:14px}
+.week-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;padding-top:8px}
+.week-head h2{font-size:24px;font-weight:800}
+.week-head .eyebrow{color:var(--accent)}
+
+.q{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 18px 16px;display:flex;flex-direction:column;gap:12px}
+.q.correct{border-color:var(--ok);box-shadow:inset 4px 0 0 var(--ok)}
+.q.wrong{border-color:var(--bad);box-shadow:inset 4px 0 0 var(--bad)}
+.q.partial{border-color:var(--warn);box-shadow:inset 4px 0 0 var(--warn)}
+.qmeta{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.qnum{font-family:var(--f-mono);font-weight:600;color:var(--ink);font-size:13px}
+.qhex{font-family:var(--f-mono)}
+.qtype{font-family:var(--f-mono);text-transform:uppercase;letter-spacing:.06em}
+.verdict{margin-left:auto;font-family:var(--f-mono);font-weight:600;font-size:12px;padding:2px 8px;border-radius:4px}
+.verdict.ok{background:var(--ok-soft);color:var(--ok)}
+.verdict.bad{background:var(--bad-soft);color:var(--bad)}
+.verdict.part{background:var(--warn-soft);color:var(--warn)}
+.prompt{margin:0;font-size:17px}
+.prompt code,.explain code,.opt code{font-family:var(--f-mono);font-size:.92em;background:var(--accent-soft);padding:1px 5px;border-radius:4px}
+pre.block{font-family:var(--f-mono);font-size:14px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin:0;overflow-x:auto;line-height:1.5}
+
+.opts{display:flex;flex-direction:column;gap:8px}
+label.opt{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+label.opt:hover{border-color:var(--accent)}
+label.opt input{margin-top:4px;accent-color:var(--accent);flex:none}
+label.opt.picked{border-color:var(--accent);background:var(--accent-soft)}
+label.opt.is-right{border-color:var(--ok);background:var(--ok-soft)}
+label.opt.is-wrong{border-color:var(--bad);background:var(--bad-soft)}
+label.opt .mark{margin-left:auto;font-family:var(--f-mono);font-size:12px;font-weight:600;white-space:nowrap}
+.locked label.opt{cursor:default}
+.locked label.opt:hover{border-color:inherit}
+
+.fillin{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+input.text{font-family:var(--f-mono);font-size:16px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);width:min(260px,100%)}
+input.text.ok{border-color:var(--ok);background:var(--ok-soft)}
+input.text.bad{border-color:var(--bad);background:var(--bad-soft)}
+
+.sentence{line-height:2.4;font-size:17px;margin:0}
+select{font-family:var(--f-mono);font-size:14px;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);max-width:100%}
+select.ok{border-color:var(--ok);background:var(--ok-soft)}
+select.bad{border-color:var(--bad);background:var(--bad-soft)}
+.steps{display:flex;flex-direction:column;gap:8px}
+.step{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.step .n{font-family:var(--f-mono);font-size:13px;color:var(--muted);width:56px}
+
+.explain{border-top:1px dashed var(--line);padding-top:10px;font-size:15px;display:flex;flex-direction:column;gap:4px}
+.explain .ans{font-weight:700}
+.explain p{margin:0}
+.ans-ok{color:var(--ok)}
+
+.taken{display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 18px}
+.taken .num{font-family:var(--f-display);font-weight:800;font-size:34px;line-height:1;font-variant-numeric:tabular-nums;color:var(--accent);min-width:1ch}
+.taken .what{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.taken .what b{font-size:16px}
+.taken .what span{font-size:13px;color:var(--muted)}
+.taken .stat{font-family:var(--f-mono);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.taken .stat b{color:var(--ink)}
+footer{color:var(--muted);font-size:13px;text-align:left;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:14px}
+footer p{margin:0}
+footer .credit{color:var(--ink);font-size:14px}
+@media (prefers-reduced-motion: reduce){.fill{transition:none}}
+@media (max-width:480px){.q{padding:14px}.score .big{font-size:44px}}
+
+html,body{margin:0}
+[hidden]{display:none!important}
+img{max-width:100%}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="intro">
+    <div class="eyebrow"><span class="bits">0011 0010</span> &nbsp;50 questions · Weeks 1–4</div>
+    <p class="batch">CINEC ARU Batch 02 · Quiz 01</p>
+    <h1>Computer Systems Revision Quiz</h1>
+    <p class="lede">Covers number bases, logic gates, binary addition, and the CPU and memory. Answer everything, then press <b>Submit</b> to see your score, which answers were right or wrong, and the correct answer with a short explanation for each.</p>
+    <div class="legend">
+      <span class="tag">MCQ: pick one</span>
+      <span class="tag">Multiple answer: pick all that apply</span>
+      <span class="tag">Fill in the blank</span>
+      <span class="tag">Dropdown</span>
+    </div>
+  </header>
+
+  <div class="taken" id="taken" aria-live="polite">
+    <span class="num" id="takenNum">–</span>
+    <div class="what"><b id="takenLabel">people have taken this quiz</b><span id="takenNote">Loading the count…</span></div>
+    <span class="stat" id="takenStat" hidden></span>
+  </div>
+
+  <div class="bar" id="bar">
+    <div class="progress">
+      <div class="progress-label" id="progLabel">0 of 50 answered</div>
+      <div class="track"><div class="fill" id="progFill"></div></div>
+    </div>
+    <button id="submitBtn" type="button">Submit answers</button>
+    <div class="confirm" id="confirm" hidden>
+      <p id="confirmText"></p>
+      <button type="button" id="confirmYes">Submit anyway</button>
+      <button type="button" class="ghost" id="confirmNo">Keep answering</button>
+    </div>
+  </div>
+
+  <div class="results" id="results" hidden></div>
+
+  <main id="quiz" style="display:flex;flex-direction:column;gap:28px"></main>
+
+  <footer><p>Built from the Week 1–4 lecture slides. Your answers stay in your own browser. When you submit, the shared count above goes up by one. Your answers and score are not sent anywhere.</p><p class="credit">Created by Chandula Navod</p></footer>
+</div>
+
+<script>
+const WEEKS = {
+  1: "Number Bases",
+  2: "Logic Gates & Hardware",
+  3: "Computer Addition",
+  4: "The CPU & Memory"
+};
+
+/* type: mcq (answer = index), multi (answer = [indices]), fill (accept = [strings]), dropdown (blanks with options + answer index) */
+const Q = [
+/* ---------------- WEEK 1 ---------------- */
+{w:1,type:"mcq",q:"Following the same pattern the slides use for 7 (2 + 2 + 2 + 1), how would a Bakairi speaker say <b>5</b>?",
+ o:["azage azage tokale","azage azage azage","tokale azage azage azage","azage tokale tokale tokale tokale"],a:0,
+ e:"5 = 2 + 2 + 1. With azage = 2 and tokale = 1 that's <i>azage azage tokale</i>."},
+{w:1,type:"fill",q:"Convert decimal <code>37</code> to binary.",accept:["100101"],
+ e:"37 = 32 + 4 + 1. Place values 32 16 8 4 2 1 → <code>1 0 0 1 0 1</code>."},
+{w:1,type:"fill",q:"Convert binary <code>110110</code> to decimal.",accept:["54"],
+ e:"32 + 16 + 0 + 4 + 2 + 0 = 54."},
+{w:1,type:"mcq",q:"Convert binary <code>11101001</code> to hexadecimal.",
+ o:["9E","E9","D9","E8"],a:1,
+ e:"Group into nibbles: <code>1110</code> = 14 = E, <code>1001</code> = 9. Result: <code>E9</code>."},
+{w:1,type:"fill",q:"Convert hexadecimal <code>2F</code> to decimal.",accept:["47"],
+ e:"2 × 16 + F (15) = 32 + 15 = 47."},
+{w:1,type:"dropdown",
+ text:"In the number 5,207 the digit 5 is worth {0} because it sits in the {1} place, which is 10 to the power of {2}.",
+ blanks:[{o:["5","500","5,000","50,000"],a:2},{o:["hundreds","thousands","tens","ones"],a:1},{o:["1","2","3","4"],a:2}],
+ e:"Positional value = digit × base<sup>position</sup>: 5 × 10³ = 5,000."},
+{w:1,type:"mcq",q:"What is decimal <code>175</code> in hexadecimal?",
+ o:["FA","BF","AF","A5"],a:2,
+ e:"175 ÷ 16 = 10 remainder 15 → A (10) and F (15) → <code>AF</code>."},
+{w:1,type:"mcq",q:"The slides compare binary to light switches. How many different states can <b>3</b> switches represent?",
+ o:["3","6","8","9"],a:2,
+ e:"Each switch doubles the count: 2 × 2 × 2 = 2³ = 8 (000 to 111)."},
+{w:1,type:"multi",q:"Which of these are valid hexadecimal digits? Select all that apply.",
+ o:["7","C","G","F","H"],a:[0,1,3],
+ e:"Hex uses 0–9 and A–F. G and H are not hex digits."},
+{w:1,type:"mcq",q:"According to the lecture, octal (base-8) is used in:",
+ o:["Quantum computing","Unix file permissions","ASCII text encoding","Image pixels"],a:1,
+ e:"Octal is used for Unix permissions (e.g. <code>chmod 755</code>). Ternary was the one linked to quantum computing."},
+{w:1,type:"mcq",q:"When counting in decimal, what happens after the ones place reaches 9?",
+ o:["The number stops","It resets to 0 and the next place increments by 1","A new symbol is introduced","It counts down to 0"],a:1,
+ e:"This is the overflow-and-reset idea. Binary does the same thing, only after 1 instead of 9."},
+{w:1,type:"mcq",q:"Each hexadecimal digit represents exactly how many binary digits?",
+ o:["2","3","4","8"],a:2,
+ e:"16 = 2⁴, so one hex digit maps to one 4-bit group (a nibble)."},
+{w:1,type:"fill",q:"What is the largest decimal value you can store in <b>8 bits</b>?",accept:["255"],
+ e:"<code>11111111</code> = 128+64+32+16+8+4+2+1 = 255 (that is 2⁸ − 1)."},
+
+/* ---------------- WEEK 2 ---------------- */
+{w:2,type:"dropdown",
+ text:"A static charge of only {0} volts can damage a computer component, but a person usually only notices a charge of about {1} volts.",
+ blanks:[{o:["20","200","2,000","20,000"],a:1},{o:["20","200","2,000","20,000"],a:2}],
+ e:"From the ESD slides: 200 V damages components; around 2,000 V is when you feel the shock. You can damage parts without ever noticing."},
+{w:2,type:"mcq",q:"Why does anti-static equipment use a resistor in its lead instead of a plain wire straight to earth?",
+ o:["To store the charge for later","So the charge drains slowly to earth instead of flooding away all at once","To increase the voltage","So the user can feel the discharge"],a:1,
+ e:"The damage comes from the sudden discharge. Resistance lets the electrons \"flow away, not flood away\"."},
+{w:2,type:"mcq",q:"Why are static shocks more common on cold, dry days?",
+ o:["Cold air holds more electrons","Low humidity means less water vapour to conduct the charge away","Metal surfaces are colder","Clothes produce fewer electrons in winter"],a:1,
+ e:"Humid air is more conductive and lets built-up charge leak away. Cold air holds less moisture, so charge builds up."},
+{w:2,type:"mcq",q:"For a NAND gate, the output <code>y</code> is 0 only when:",
+ o:["a = 0, b = 0","a = 0, b = 1","a = 1, b = 0","a = 1, b = 1"],a:3,
+ e:"NAND is NOT(AND). AND is 1 only when both inputs are 1, so NAND is 0 only in that case."},
+{w:2,type:"multi",q:"For an OR gate, which input pairs <code>(a, b)</code> produce <code>y = 1</code>? Select all that apply.",
+ o:["(0, 0)","(0, 1)","(1, 0)","(1, 1)"],a:[1,2,3],
+ e:"OR is 1 if a is 1 or b is 1 (or both). Only (0, 0) gives 0."},
+{w:2,type:"fill",q:"A logic circuit has <b>5</b> inputs. How many rows does its full truth table have?",accept:["32"],
+ e:"Each input doubles the rows: 2⁵ = 32."},
+{w:2,type:"mcq",q:"What does a small circle (\"bubble\") on the output of a gate symbol mean?",
+ o:["The gate is powered","The output is inverted (complemented)","The gate has three inputs","It is an OR gate"],a:1,
+ e:"The bubble means inversion. That's what turns AND into NAND and OR into NOR."},
+{w:2,type:"dropdown",
+ text:"In Boolean algebra, AND is written with a {0}, OR is written with a {1}, and NOT a is written as {2}.",
+ blanks:[{o:["plus sign (+)","dot (·)","circled plus (⊕)","bar or prime (ā or a′)"],a:1},
+         {o:["plus sign (+)","dot (·)","circled plus (⊕)","bar or prime (ā or a′)"],a:0},
+         {o:["plus sign (+)","dot (·)","circled plus (⊕)","bar or prime (ā or a′)"],a:3}],
+ e:"AND = · , OR = + , NOT = bar or ′. The ⊕ symbol is XOR."},
+{w:2,type:"mcq",q:"For <code>y = (a + b) · c′</code>, what is y when a = 1, b = 0, c = 1?",
+ o:["0","1","2","Undefined"],a:0,
+ e:"a + b = 1 + 0 = 1. c′ = NOT 1 = 0. Then 1 · 0 = 0."},
+{w:2,type:"mcq",q:"Alarm example: <i>\"If switch A or switch B is ON and switch C is OFF, the alarm X sounds.\"</i> Which expression is correct?",
+ o:["X = A · B · C","X = (A + B) · C′","X = (A · B) + C′","X = A + B + C"],a:1,
+ e:"\"A or B\" → (A + B). \"and C is OFF\" → · C′. So X = (A + B) · C′."},
+{w:2,type:"mcq",q:"Boiler example: open the fuel valve <code>v</code> if the chimney is <b>not</b> blocked (b), the house is cold (c) and the pilot light is lit (p). Which expression gives v?",
+ o:["v = b · c · p","v = b′ + c + p","v = b′ · c · p","v = (b + c) · p′"],a:2,
+ e:"All three conditions must hold (AND), and the chimney condition is negated: v = b′ · c · p."},
+{w:2,type:"mcq",q:"What is the correct order of computer hardware generations?",
+ o:["Transistors → vacuum tubes → integrated circuits → microprocessors","Vacuum tubes → transistors → integrated circuits → microprocessors","Vacuum tubes → integrated circuits → transistors → microprocessors","Integrated circuits → transistors → vacuum tubes → microprocessors"],a:1,
+ e:"ENIAC used vacuum tubes, then came transistors, then integrated circuits, then the microprocessor."},
+{w:2,type:"dropdown",
+ text:"For an XOR gate: XOR(0, 0) = {0}, XOR(0, 1) = {1}, XOR(1, 0) = {2}, XOR(1, 1) = {3}.",
+ blanks:[{o:["0","1"],a:0},{o:["0","1"],a:1},{o:["0","1"],a:1},{o:["0","1"],a:0}],
+ e:"XOR outputs 1 only when the inputs are <i>different</i>."},
+
+/* ---------------- WEEK 3 ---------------- */
+{w:3,type:"fill",q:"Add in binary: <code>1011 + 0110</code> = ?",accept:["10001"],
+ e:"11 + 6 = 17 = <code>10001</code>. The carry ripples out of the top column into a 5th bit."},
+{w:3,type:"dropdown",
+ text:"In a half-adder, SUM is produced by an {0} gate and CARRY is produced by an {1} gate, so CARRY = {2}.",
+ blanks:[{o:["AND","OR","XOR","NOT"],a:2},{o:["AND","OR","XOR","NOT"],a:0},{o:["A + B","A · B","A ⊕ B","A′"],a:1}],
+ e:"SUM = A ⊕ B (1 when exactly one input is 1). CARRY = A · B (1 only when both are 1)."},
+{w:3,type:"mcq",q:"A full-adder has inputs A = 0, B = 1, Cin = 1. What are its outputs?",
+ o:["SUM = 1, Cout = 0","SUM = 0, Cout = 1","SUM = 1, Cout = 1","SUM = 0, Cout = 0"],a:1,
+ e:"0 + 1 + 1 = 2 = binary <code>10</code>, so SUM = 0 and Cout = 1."},
+{w:3,type:"mcq",q:"Why is the half-adder called \"half\"?",
+ o:["It only has half the gates of a CPU","It cannot accept a carry-in from a previous column","It only adds half of each number","It works at half speed"],a:1,
+ e:"A half-adder adds A and B only. It ignores the carry coming from the column to its right, so it can't be chained on its own."},
+{w:3,type:"mcq",q:"Following the lecture's design, what do you need to add two <b>4-bit</b> numbers?",
+ o:["4 half-adders","1 half-adder and 3 full-adders","2 half-adders and 2 full-adders","8 full-adders"],a:1,
+ e:"The rightmost column has no carry-in, so a half-adder is enough there. Every other column needs a full-adder."},
+{w:3,type:"fill",q:"What is the <b>decimal</b> result of the binary addition <code>1101 + 0111</code>?",accept:["20"],
+ e:"1101 = 13 and 0111 = 7, so 13 + 7 = 20 (binary <code>10100</code>)."},
+{w:3,type:"mcq",q:"Which expression gives the SUM output of a full-adder?",
+ o:["A · B · Cin","A + B + Cin","A ⊕ B ⊕ Cin","(A · B) + Cin"],a:2,
+ e:"SUM is 1 when an odd number of inputs are 1, which is what two chained XOR gates give you."},
+{w:3,type:"mcq",q:"Which is the simplified carry-out expression for a full-adder shown in the slides?",
+ o:["Cout = (A ⊕ B) + Cin","Cout = (A · B) + (Cin · (A ⊕ B))","Cout = A · B · Cin","Cout = (A + B) · Cin′"],a:1,
+ e:"Cout = 1 if both A and B are 1, or if there is a carry-in and exactly one of A, B is 1."},
+{w:3,type:"multi",q:"For which input combinations <code>(A, B, Cin)</code> is a full-adder's Cout = 1? Select all that apply.",
+ o:["(0, 1, 1)","(1, 0, 0)","(1, 1, 0)","(0, 0, 1)","(1, 1, 1)","(0, 1, 0)"],a:[0,2,4],
+ e:"Cout = 1 whenever <i>two or more</i> inputs are 1: (0,1,1), (1,1,0) and (1,1,1)."},
+{w:3,type:"mcq",q:"Using a 4-bit adder, what is <code>1001 + 1000</code>?",
+ o:["10001","0001 with carry 1","1001 with carry 0","0000 with carry 1"],a:1,
+ e:"9 + 8 = 17 = <code>10001</code>. Only 4 bits fit, so the result is <code>0001</code> and the 5th bit leaves as the carry."},
+{w:3,type:"fill",q:"Add in binary: <code>111 + 111</code> = ?",accept:["1110"],
+ e:"7 + 7 = 14 = <code>1110</code>. Every column produces a carry."},
+{w:3,type:"mcq",q:"The SUM output of a full-adder is 1 when:",
+ o:["All inputs are 0","An odd number of inputs are 1","Exactly two inputs are 1","Cin is 0"],a:1,
+ e:"One or three 1s give SUM = 1 (1 = <code>01</code>, 3 = <code>11</code>). Two 1s give <code>10</code>, so SUM = 0."},
+
+/* ---------------- WEEK 4 ---------------- */
+{w:4,type:"mcq",q:"Which register is described as a <b>two-way</b> register that carries data between memory and the CPU?",
+ o:["PC","MAR","MDR","IR"],a:2,
+ e:"The MDR holds the value being read from or written to the address in the MAR, so data moves both ways through it."},
+{w:4,type:"order",q:"Put the <b>LOAD</b> fetch-execute steps in order.",
+ steps:5,o:["PC → MAR","MDR → IR","IR[address] → MAR","MDR → A","PC + 1 → PC"],
+ e:"Fetch: PC → MAR, then MDR → IR. Execute: IR[address] → MAR, MDR → A. Finally PC + 1 → PC so the next instruction is fetched."},
+{w:4,type:"fill",pre:"Memory contents:\nPC = 40\nMem[40] = 185   (ADD 85)\nMem[85] = 17\nA = 25",
+ q:"After the instruction at address 40 executes, what is the value in the accumulator (A)?",accept:["42"],
+ e:"Opcode 1 = ADD, address 85. A + Mem[85] = 25 + 17 = 42."},
+{w:4,type:"fill",pre:"Memory contents:\nPC = 40\nMem[40] = 185   (ADD 85)",
+ q:"After that same instruction finishes, what value does the Program Counter (PC) hold?",accept:["41"],
+ e:"The last step of every cycle is PC + 1 → PC, so 40 becomes 41."},
+{w:4,type:"mcq",q:"In the STORE cycle, how does step 4 differ from LOAD?",
+ o:["MDR → A","A → MDR","PC → MDR","IR → A"],a:1,
+ e:"LOAD copies memory into the accumulator (MDR → A). STORE goes the other way: A → MDR, then the MDR writes to memory."},
+{w:4,type:"mcq",q:"In the memory hierarchy, which is the fastest and smallest?",
+ o:["Secondary storage (hard disk)","Main memory (RAM)","Cache","CPU registers"],a:3,
+ e:"The smaller it is, the faster and more expensive it is. Registers sit at the very top, inside the CPU."},
+{w:4,type:"mcq",q:"Compared with DRAM, SRAM is:",
+ o:["Slower, cheaper and non-volatile","Faster, more expensive and used in cache","Cheaper and used for main memory","Non-volatile and used for BIOS"],a:1,
+ e:"SRAM is faster and more expensive, still volatile, and small amounts are used for cache. DRAM is cheaper and needs constant refreshing."},
+{w:4,type:"multi",q:"Which of these are <b>non-volatile</b> (keep their contents with the power off)? Select all that apply.",
+ o:["ROM","DRAM","Flash memory","SRAM"],a:[0,2],
+ e:"ROM (e.g. firmware/BIOS) and Flash keep data without power. DRAM and SRAM are both volatile."},
+{w:4,type:"mcq",q:"The lecture compares the Control Unit to:",
+ o:["A warehouse","The conductor of an orchestra","A calculator","A post box"],a:1,
+ e:"The CU directs the other parts of the CPU (ALU, registers), like a conductor directing musicians."},
+{w:4,type:"mcq",q:"Using the lecture's instruction codes (1 = ADD, 3 = STORE, 5 = LOAD), what does instruction <code>390</code> do?",
+ o:["Loads the value at address 90 into A","Adds the value at address 90 to A","Stores the accumulator's value into address 90","Jumps to address 390"],a:2,
+ e:"First digit 3 = STORE, remaining digits 90 = address. So A is copied into Mem[90]."},
+{w:4,type:"dropdown",
+ text:"A classical bit is either 0 or 1, but a qubit can be in {0}, meaning 0, 1 or both at once. Two qubits whose states are linked even over long distances are said to be {1}.",
+ blanks:[{o:["superposition","overflow","a register","binary"],a:0},{o:["volatile","entangled","multiplexed","refreshed"],a:1}],
+ e:"Superposition lets a qubit represent several states at once. Entanglement links the state of one qubit to another."},
+{w:4,type:"mcq",q:"What best describes a System on a Chip (SoC)?",
+ o:["A motherboard with separate CPU and GPU chips","A single chip that integrates the CPU, GPU, memory, radios and more","A chip that only stores the operating system","A network of thousands of computing nodes"],a:1,
+ e:"An SoC puts most major components on one silicon die instead of spreading them across a motherboard. Thousands of nodes working in parallel is a supercomputer."}
+];
+
+const LETTERS = "ABCDEFGH";
+const STORE_KEY = "cs-quiz-w1-4-v1";
+let state = {answers:{}, submitted:false, onlyWrong:false};
+const $ = s => document.querySelector(s);
+const hex = n => "0x" + n.toString(16).toUpperCase().padStart(2,"0");
+const typeLabel = {mcq:"Multiple choice",multi:"Multiple answer",fill:"Fill in the blank",dropdown:"Dropdown",order:"Dropdown · order"};
+
+function load(){try{const s=JSON.parse(localStorage.getItem(STORE_KEY)||"null");if(s&&s.answers)state.answers=s.answers;}catch(e){}}
+function save(){try{localStorage.setItem(STORE_KEY,JSON.stringify({answers:state.answers}));}catch(e){}}
+
+function norm(s){
+  s=String(s||"").trim().toLowerCase().replace(/\s+/g,"").replace(/^0x/,"").replace(/[₂₁₀]|\(2\)|\(10\)$/g,"");
+  if(/^\d+$/.test(s)) s=s.replace(/^0+(?=\d)/,"");
+  return s;
+}
+
+function build(){
+  const main=$("#quiz"); main.innerHTML="";
+  let n=0;
+  [1,2,3,4].forEach(w=>{
+    const sec=document.createElement("section"); sec.className="week"; sec.id="week-"+w;
+    sec.innerHTML=`<div class="week-head"><span class="eyebrow">Week ${w}</span><h2>${WEEKS[w]}</h2></div>`;
+    Q.forEach((q,i)=>{ if(q.w!==w) return; n++; q.n=n; q.i=i; sec.appendChild(card(q)); });
+    main.appendChild(sec);
+  });
+}
+
+function card(q){
+  const el=document.createElement("article"); el.className="q"; el.id="q"+q.n; el.dataset.i=q.i;
+  const pts = (q.type==="dropdown") ? `${q.blanks.length} blanks` : (q.type==="order" ? `${q.steps} steps` : "1 point");
+  let html=`<div class="qmeta"><span class="qnum">Q${q.n}</span><span class="qhex">${hex(q.n)}</span><span class="qtype">${typeLabel[q.type]}</span><span>${pts}</span><span class="verdict" hidden></span></div>`;
+  if(q.pre) html+=`<pre class="block">${q.pre}</pre>`;
+  const name="q"+q.i;
+  const saved=state.answers[q.i];
+  if(q.type==="mcq"||q.type==="multi"){
+    html+=`<p class="prompt">${q.q}</p><div class="opts" role="${q.type==="mcq"?"radiogroup":"group"}">`;
+    q.o.forEach((o,k)=>{
+      const t=q.type==="mcq"?"radio":"checkbox";
+      const checked = q.type==="mcq" ? saved===k : Array.isArray(saved)&&saved.includes(k);
+      html+=`<label class="opt${checked?" picked":""}"><input type="${t}" name="${name}" id="${name}-${k}" value="${k}"${checked?" checked":""}><span>${o}</span><span class="mark"></span></label>`;
+    });
+    html+=`</div>`;
+  } else if(q.type==="fill"){
+    html+=`<p class="prompt">${q.q}</p><div class="fillin"><input class="text" type="text" id="${name}-t" autocomplete="off" spellcheck="false" placeholder="Type your answer" value="${saved?String(saved).replace(/"/g,"&quot;"):""}"></div>`;
+  } else if(q.type==="dropdown"){
+    const vals=Array.isArray(saved)?saved:[];
+    const txt=q.text.replace(/\{(\d+)\}/g,(m,b)=>{
+      const B=q.blanks[+b];
+      return `<select id="${name}-s${b}" data-b="${b}" aria-label="Blank ${+b+1}"><option value="">Choose…</option>${B.o.map((o,k)=>`<option value="${k}"${vals[b]===k?" selected":""}>${o}</option>`).join("")}</select>`;
+    });
+    html+=`<p class="sentence">${txt}</p>`;
+  } else if(q.type==="order"){
+    const vals=Array.isArray(saved)?saved:[];
+    html+=`<p class="prompt">${q.q}</p><div class="steps">`;
+    for(let s=0;s<q.steps;s++){
+      html+=`<div class="step"><span class="n">Step ${s+1}</span><select id="${name}-s${s}" data-b="${s}" aria-label="Step ${s+1}"><option value="">Choose…</option>${shuffledIdx(q).map(k=>`<option value="${k}"${vals[s]===k?" selected":""}>${q.o[k]}</option>`).join("")}</select></div>`;
+    }
+    html+=`</div>`;
+  }
+  html+=`<div class="explain" hidden></div>`;
+  el.innerHTML=html;
+  bind(el,q);
+  return el;
+}
+function shuffledIdx(q){ if(!q._sh){ q._sh=[2,4,0,3,1]; } return q._sh; }
+
+function bind(el,q){
+  el.addEventListener("change",e=>{
+    if(state.submitted) return;
+    const t=e.target;
+    if(q.type==="mcq"){ state.answers[q.i]=+t.value; el.querySelectorAll("label.opt").forEach(l=>l.classList.toggle("picked",l.querySelector("input").checked)); }
+    else if(q.type==="multi"){ state.answers[q.i]=[...el.querySelectorAll("input:checked")].map(x=>+x.value); el.querySelectorAll("label.opt").forEach(l=>l.classList.toggle("picked",l.querySelector("input").checked)); }
+    else if(q.type==="dropdown"||q.type==="order"){
+      const arr=[...el.querySelectorAll("select")].map(s=>s.value===""?null:+s.value);
+      state.answers[q.i]=arr;
+    }
+    save(); progress();
+  });
+  if(q.type==="fill"){
+    el.querySelector("input.text").addEventListener("input",e=>{ if(state.submitted) return; state.answers[q.i]=e.target.value; save(); progress(); });
+  }
+}
+
+function isAnswered(q){
+  const a=state.answers[q.i];
+  if(q.type==="mcq") return typeof a==="number";
+  if(q.type==="multi") return Array.isArray(a)&&a.length>0;
+  if(q.type==="fill") return typeof a==="string"&&a.trim()!=="";
+  if(q.type==="dropdown") return Array.isArray(a)&&a.length===q.blanks.length&&a.every(v=>v!==null);
+  if(q.type==="order") return Array.isArray(a)&&a.length===q.steps&&a.every(v=>v!==null);
+}
+function progress(){
+  const c=Q.filter(isAnswered).length;
+  $("#progLabel").textContent = state.submitted ? `Submitted · ${c} of ${Q.length} answered` : `${c} of ${Q.length} answered`;
+  $("#progFill").style.width=(c/Q.length*100)+"%";
+  return c;
+}
+
+/* score per question: 0..1 */
+function grade(q){
+  const a=state.answers[q.i];
+  if(q.type==="mcq") return a===q.a?1:0;
+  if(q.type==="multi"){ const s=new Set(Array.isArray(a)?a:[]); return (s.size===q.a.length && q.a.every(x=>s.has(x)))?1:0; }
+  if(q.type==="fill"){ return q.accept.map(norm).includes(norm(a))?1:0; }
+  if(q.type==="dropdown"){ const arr=Array.isArray(a)?a:[]; return q.blanks.filter((b,k)=>arr[k]===b.a).length/q.blanks.length; }
+  if(q.type==="order"){ const arr=Array.isArray(a)?a:[]; let c=0; for(let s=0;s<q.steps;s++) if(arr[s]===s) c++; return c/q.steps; }
+}
+
+function correctText(q){
+  if(q.type==="mcq") return q.o[q.a];
+  if(q.type==="multi") return q.a.map(k=>q.o[k]).join(", ");
+  if(q.type==="fill") return `<code>${q.accept[0]}</code>`;
+  if(q.type==="dropdown") return q.blanks.map(b=>`<b>${b.o[b.a]}</b>`).join(" · ");
+  if(q.type==="order") return q.o.map((o,k)=>`${k+1}. ${o}`).join(" → ");
+}
+
+function submit(){
+  state.submitted=true; $("#confirm").hidden=true;
+  let total=0; const wk={1:[0,0],2:[0,0],3:[0,0],4:[0,0]};
+  Q.forEach(q=>{
+    const g=grade(q); q._g=g; total+=g; wk[q.w][0]+=g; wk[q.w][1]+=1;
+    const el=$("#q"+q.n); el.classList.add("locked");
+    el.classList.remove("correct","wrong","partial");
+    el.classList.add(g===1?"correct":g===0?"wrong":"partial");
+    const v=el.querySelector(".verdict"); v.hidden=false;
+    v.className="verdict "+(g===1?"ok":g===0?"bad":"part");
+    v.textContent = g===1?"Correct":g===0?(isAnswered(q)?"Incorrect":"Not answered"):`Partly right · ${fmt(g)}/1`;
+    el.querySelectorAll("input,select").forEach(x=>x.disabled=true);
+    const a=state.answers[q.i];
+    if(q.type==="mcq"||q.type==="multi"){
+      const right=q.type==="mcq"?[q.a]:q.a;
+      el.querySelectorAll("label.opt").forEach((l,k)=>{
+        const picked=l.querySelector("input").checked; const isR=right.includes(k);
+        const m=l.querySelector(".mark");
+        if(isR){ l.classList.add("is-right"); m.textContent = picked?"✓ your answer":"✓ correct answer"; m.className="mark ans-ok"; m.style.color="var(--ok)"; }
+        else if(picked){ l.classList.add("is-wrong"); m.textContent="✗ your answer"; m.style.color="var(--bad)"; }
+      });
+    } else if(q.type==="fill"){
+      el.querySelector("input.text").classList.add(g===1?"ok":"bad");
+    } else {
+      const arr=Array.isArray(a)?a:[];
+      el.querySelectorAll("select").forEach((s,k)=>{ const exp = q.type==="order"?k:q.blanks[k].a; s.classList.add(arr[k]===exp?"ok":"bad"); });
+    }
+    const ex=el.querySelector(".explain"); ex.hidden=false;
+    ex.innerHTML = (g===1?"":`<p class="ans">Correct answer: <span class="ans-ok">${correctText(q)}</span></p>`) + `<p>${q.e}</p>`;
+  });
+  const pct=Math.round(total/Q.length*100);
+  const r=$("#results"); r.hidden=false;
+  const wrongCount=Q.filter(q=>q._g<1).length;
+  r.innerHTML=`
+    <div class="eyebrow">Your result</div>
+    <div class="score"><span class="big">${fmt(total)}</span><span class="of">/ ${Q.length}</span><span class="pct">${pct}%</span></div>
+    <div class="weeks">${[1,2,3,4].map(w=>`<div class="wk"><span>Week ${w} · ${WEEKS[w]}</span><b>${fmt(wk[w][0])} / ${wk[w][1]}</b></div>`).join("")}</div>
+    <div class="row">
+      <button type="button" id="retry">Try again</button>
+      <label class="toggle"><input type="checkbox" id="onlyWrong"> Show only the ${wrongCount} question${wrongCount===1?"":"s"} to review</label>
+    </div>`;
+  $("#retry").onclick=reset;
+  $("#onlyWrong").onchange=e=>{ Q.forEach(q=>{ $("#q"+q.n).hidden = e.target.checked && q._g===1; }); };
+  $("#submitBtn").disabled=true; $("#submitBtn").textContent="Submitted";
+  progress();
+  recordCompletion();
+  r.scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth", block:"start"});
+}
+function fmt(x){ return Number.isInteger(x)?String(x):x.toFixed(2).replace(/0$/,""); }
+
+function reset(){
+  state={answers:{},submitted:false};
+  try{localStorage.removeItem(STORE_KEY);}catch(e){}
+  $("#results").hidden=true; $("#submitBtn").disabled=false; $("#submitBtn").textContent="Submit answers";
+  build(); progress(); window.scrollTo({top:0});
+}
+
+$("#submitBtn").onclick=()=>{
+  const c=progress();
+  if(c<Q.length){
+    $("#confirmText").textContent=`You've answered ${c} of ${Q.length}. Unanswered questions will be marked wrong.`;
+    $("#confirm").hidden=false;
+  } else submit();
+};
+$("#confirmYes").onclick=submit;
+$("#confirmNo").onclick=()=>{ $("#confirm").hidden=true; const first=Q.find(q=>!isAnswered(q)); if(first) $("#q"+first.n).scrollIntoView({block:"center"}); };
+
+/* ---------- shared "people who took this" counter (CounterAPI) ---------- */
+const COUNTER_URL = "https://api.counterapi.dev/v2/chandula-navods-team-6066/first-counter-6066";
+// Anyone can read this key in the page source. If your counter is set to public in CounterAPI, set this to "".
+const COUNTER_KEY = "ut_tyJqQcJYj0blnEt5TWmcJYg84OeyNfbxgeMiiLi8";
+const COUNTED_KEY = "cs-quiz-w1-4-counted";
+const counter = {value:null, ok:false};
+function counterHeaders(){ return COUNTER_KEY ? {Authorization:"Bearer "+COUNTER_KEY} : {}; }
+function readCount(j){
+  const d = (j && typeof j==="object" && j.data && typeof j.data==="object") ? j.data : (j||{});
+  if (typeof d.count==="number") return d.count;
+  if (typeof d.value==="number") return d.value;
+  if (typeof d.up_count==="number") return d.up_count - (Number(d.down_count)||0);
+  return null;
+}
+function alreadyCounted(){ try{ return localStorage.getItem(COUNTED_KEY)==="1"; }catch(e){ return false; } }
+function renderCount(note){
+  $("#takenNum").textContent = counter.value===null ? "–" : counter.value;
+  $("#takenLabel").textContent = counter.value===1 ? "person has taken this quiz" : "people have taken this quiz";
+  if(note!==undefined){ $("#takenNote").textContent=note; return; }
+  if(!counter.ok){ $("#takenNote").textContent="Loading the count…"; return; }
+  $("#takenNote").textContent = alreadyCounted() ? "You're counted. Retakes on this device aren't counted again."
+    : (counter.value ? "Submit your answers to be counted." : "Nobody yet. Be the first to submit.");
+}
+async function initCounter(){
+  try{
+    const r = await fetch(COUNTER_URL, {headers:counterHeaders(), cache:"no-store"});
+    if(!r.ok) throw new Error(r.status);
+    const v = readCount(await r.json());
+    if(v===null) throw new Error("shape");
+    counter.value=v; counter.ok=true; renderCount();
+  }catch(e){ renderCount("The count couldn't be loaded right now."); }
+}
+async function recordCompletion(){
+  if(alreadyCounted()){ renderCount(); return; }
+  try{
+    const r = await fetch(COUNTER_URL+"/up", {headers:counterHeaders(), cache:"no-store"});
+    if(!r.ok) throw new Error(r.status);
+    let v=null; try{ v=readCount(await r.json()); }catch(e){}
+    try{ localStorage.setItem(COUNTED_KEY,"1"); }catch(e){}
+    counter.value = v!==null ? v : (counter.value||0)+1; counter.ok=true;
+    renderCount();
+  }catch(e){ renderCount("Your result couldn't be added to the count. Check your connection."); }
+}
+
+load(); build(); progress(); renderCount(); initCounter();
+</script>
+</body>
+</html>
