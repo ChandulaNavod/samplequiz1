@@ -161,7 +161,7 @@ img{max-width:100%}
 
   <div class="taken" id="taken" aria-live="polite">
     <span class="num" id="takenNum">–</span>
-    <div class="what"><b id="takenLabel">people have taken this quiz</b><span id="takenNote">Loading the count…</span></div>
+    <div class="what"><b id="takenLabel">attempts at this quiz so far</b><span id="takenNote">Loading the count…</span></div>
     <span class="stat" id="takenStat" hidden></span>
   </div>
 
@@ -182,7 +182,7 @@ img{max-width:100%}
 
   <main id="quiz" style="display:flex;flex-direction:column;gap:28px"></main>
 
-  <footer><p>Built from the Week 1–4 lecture slides. Your answers stay in your own browser. When you submit, the shared count above goes up by one. Your answers and score are not sent anywhere.</p><p class="credit">Created by Chandula Navod</p></footer>
+  <footer><p>Built from the Week 1–4 lecture slides. Your answers stay in your own browser. When you submit, the shared count above goes up by one, retakes included. Your answers and score are not sent anywhere.</p><p class="credit">Created by Chandula Navod</p></footer>
 </div>
 
 <script>
@@ -554,31 +554,37 @@ function readCount(j){
 function alreadyCounted(){ try{ return localStorage.getItem(COUNTED_KEY)==="1"; }catch(e){ return false; } }
 function renderCount(note){
   $("#takenNum").textContent = counter.value===null ? "–" : counter.value;
-  $("#takenLabel").textContent = counter.value===1 ? "person has taken this quiz" : "people have taken this quiz";
+  $("#takenLabel").textContent = counter.value===1 ? "attempt at this quiz so far" : "attempts at this quiz so far";
   if(note!==undefined){ $("#takenNote").textContent=note; return; }
   if(!counter.ok){ $("#takenNote").textContent="Loading the count…"; return; }
-  $("#takenNote").textContent = alreadyCounted() ? "You're counted. Retakes on this device aren't counted again."
-    : (counter.value ? "Submit your answers to be counted." : "Nobody yet. Be the first to submit.");
+  $("#takenNote").textContent = counter.justCounted ? "Your attempt was counted. Every submit, including retakes, adds one."
+    : (counter.value ? "Every submit, including retakes, adds one to the count." : "No attempts yet. Be the first to submit.");
+}
+/* Counters are public by default, so try without the key first (a header forces a CORS preflight). */
+async function counterFetch(path){
+  const url = COUNTER_URL + path;
+  let r;
+  try { r = await fetch(url, {cache:"no-store"}); }
+  catch(e){ console.warn("[counter] request failed without key", e); r = null; }
+  if ((!r || r.status===401 || r.status===403) && COUNTER_KEY){
+    r = await fetch(url, {headers:counterHeaders(), cache:"no-store"});
+  }
+  if (!r || !r.ok) throw new Error("HTTP " + (r ? r.status : "network"));
+  const j = await r.json();
+  const v = readCount(j);
+  if (v===null) { console.warn("[counter] unexpected response", j); throw new Error("shape"); }
+  return v;
 }
 async function initCounter(){
-  try{
-    const r = await fetch(COUNTER_URL, {headers:counterHeaders(), cache:"no-store"});
-    if(!r.ok) throw new Error(r.status);
-    const v = readCount(await r.json());
-    if(v===null) throw new Error("shape");
-    counter.value=v; counter.ok=true; renderCount();
-  }catch(e){ renderCount("The count couldn't be loaded right now."); }
+  try{ counter.value = await counterFetch(""); counter.ok=true; renderCount(); }
+  catch(e){ console.warn("[counter] load failed:", e.message); renderCount("The count couldn't be loaded right now."); }
 }
 async function recordCompletion(){
-  if(alreadyCounted()){ renderCount(); return; }
+  counter.justCounted=false;
   try{
-    const r = await fetch(COUNTER_URL+"/up", {headers:counterHeaders(), cache:"no-store"});
-    if(!r.ok) throw new Error(r.status);
-    let v=null; try{ v=readCount(await r.json()); }catch(e){}
-    try{ localStorage.setItem(COUNTED_KEY,"1"); }catch(e){}
-    counter.value = v!==null ? v : (counter.value||0)+1; counter.ok=true;
-    renderCount();
-  }catch(e){ renderCount("Your result couldn't be added to the count. Check your connection."); }
+    const v = await counterFetch("/up");
+    counter.value = v; counter.ok=true; counter.justCounted=true; renderCount();
+  }catch(e){ console.warn("[counter] up failed:", e.message); renderCount("Your result couldn't be added to the count. Check your connection."); }
 }
 
 load(); build(); progress(); renderCount(); initCounter();
